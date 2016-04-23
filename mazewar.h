@@ -50,6 +50,7 @@ SOFTWARE.
 #include "Exception.h"
 #include <string>
 #include <time.h>
+#include <packet.h>
 /* fundamental constants */
 
 #ifndef	TRUE
