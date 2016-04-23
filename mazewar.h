@@ -49,6 +49,7 @@ SOFTWARE.
 #include "Nominal.h"
 #include "Exception.h"
 #include <string>
+#include <time.h>
 /* fundamental constants */
 
 #ifndef	TRUE
@@ -63,7 +64,7 @@ SOFTWARE.
 /* Feel free to modify.  This is the simplest version we came up with */
 
 /* A unique MAZEPORT will be assigned to your team by the TA */
-#define	MAZEPORT	5000
+#define	MAZEPORT	5002
 /* The multicast group for Mazewar is 224.1.1.1 */
 #define MAZEGROUP       0xe0010101
 #define	MAZESERVICE	"mazewar244B"
@@ -85,6 +86,7 @@ SOFTWARE.
 #define	RIGHT		1
 #define	REAR		2
 #define	FRONT		3
+#define MISSILE_SPEED	500
 
 /* types */
 
@@ -100,49 +102,49 @@ typedef	struct {unsigned short	bits[16];}	BitCell;
 typedef	char						RatName[NAMESIZE];
 
 
- 	class Direction : public Ordinal<Direction, short> {
-	public:
-		Direction(short num) : Ordinal<Direction, short>(num) {
-			if(num<NORTH || num>NDIRECTION){
-				throw RangeException("Error: Unexpected value.\n");
-			}
+class Direction : public Ordinal<Direction, short> {
+public:
+	Direction(short num) : Ordinal<Direction, short>(num) {
+		if(num<NORTH || num>NDIRECTION){
+			throw RangeException("Error: Unexpected value.\n");
 		}
-	};
+	}
+};
 
- 	class Loc : public Ordinal<Loc, short> {
-	public:
-		Loc(short num) : Ordinal<Loc, short>(num) {
-			if(num<0){
-				throw RangeException("Error: Unexpected negative value.\n");
-			}
+class Loc : public Ordinal<Loc, short> {
+public:
+	Loc(short num) : Ordinal<Loc, short>(num) {
+		if(num<0){
+			throw RangeException("Error: Unexpected negative value.\n");
 		}
-	};
+	}
+};
 
- 	class Score : public Ordinal<Score, int> {
-	public:
-		Score(int num) : Ordinal<Score, int>(num) {}
-	};
+class Score : public Ordinal<Score, int> {
+public:
+	Score(int num) : Ordinal<Score, int>(num) {}
+};
 
 
- 	class RatIndexType : public Ordinal<RatIndexType, int> {
-	public:
-		RatIndexType(int num) : Ordinal<RatIndexType, int>(num) {
-			if(num<0){
-				throw RangeException("Error: Unexpected negative value.\n");
-			}
+class RatIndexType : public Ordinal<RatIndexType, int> {
+public:
+	RatIndexType(int num) : Ordinal<RatIndexType, int>(num) {
+		if(num<0){
+			throw RangeException("Error: Unexpected negative value.\n");
 		}
-	};
+	}
+};
 
- 	class RatId : public Ordinal<RatId, unsigned short> {
-	public:
-		RatId(unsigned short num) : Ordinal<RatId, unsigned short>(num) {
-		}
-	};
+class RatId : public Ordinal<RatId, unsigned short> {
+public:
+	RatId(unsigned short num) : Ordinal<RatId, unsigned short>(num) {
+	}
+};
 
- 	class TokenId : public Ordinal<TokenId, long> {
-	public:
-		TokenId(long num) : Ordinal<TokenId, long>(num) {}
-	};
+class TokenId : public Ordinal<TokenId, long> {
+public:
+	TokenId(long num) : Ordinal<TokenId, long>(num) {}
+};
 
 
 class RatAppearance{
@@ -212,12 +214,23 @@ class MazewarInstance :  public Fwk::NamedInterface  {
     void activeIs(int active) { this->active_ = active; }
     inline Rat rat(RatIndexType num) const { return mazeRats_[num.value()]; }
     void ratIs(Rat rat, RatIndexType num) { this->mazeRats_[num.value()] = rat; }
+    inline bool hasMissile() { return this->hasMissile_; }
+    void hasMissileIs(bool hasMissile) { this->hasMissile_ = hasMissile; }
+    inline Loc xMissile() { return this->xMissile_; }
+    void xMissileIs(Loc xMissile) { this->xMissile_ = xMissile; }
+    inline Loc yMissile() { return this->yMissile_; }
+    void yMissileIs(Loc yMissile) { this->yMissile_ = yMissile; }
+    inline Direction dirMissile() { return this->dirMissile_; }
+    void dirMissileIs(Direction dirMissile) { this->dirMissile_ = dirMissile; }
+    inline timeval lastUpdate() { return this->lastUpdate_; }
+    void lastUpdateIs(timeval lastUpdate) { this->lastUpdate_ = lastUpdate; }
 
     MazeType maze_;
     RatName myName_;
 protected:
 	MazewarInstance(string s) : Fwk::NamedInterface(s), dir_(0), dirPeek_(0), myRatId_(0), score_(0),
-		xloc_(1), yloc_(3), xPeek_(0), yPeek_(0) {
+		xloc_(1), yloc_(3), xPeek_(0), yPeek_(0), hasMissile_(FALSE), xMissile_(0), yMissile_(0),
+                dirMissile_(0) {
 		myAddr_ = (Sockaddr*)malloc(sizeof(Sockaddr));
 		if(!myAddr_) {
 			printf("Error allocating sockaddr variable");
@@ -239,6 +252,11 @@ protected:
     Loc xPeek_;
     Loc yPeek_;
     int active_;
+    bool hasMissile_;
+    Loc xMissile_;
+    Loc yMissile_;
+    Direction dirMissile_;
+    timeval lastUpdate_;
 };
 extern MazewarInstance::Ptr M;
 
@@ -301,6 +319,7 @@ void FlipBitmaps(void);
 void bitFlip(BitCell *, int size);
 void SwapBitmaps(void);
 void byteSwap(BitCell *, int size);
+void showMissile(Loc, Loc, Direction, Loc, Loc, bool);
 
 
 /* init.c */

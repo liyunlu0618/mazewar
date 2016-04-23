@@ -111,6 +111,9 @@ play(void)
 				quit(0);
 				break;
 
+			default:
+				break;
+
 			}
 		else
 			switch (event.eventType) {
@@ -121,6 +124,9 @@ play(void)
 
 			case EVENT_NETWORK:
 				processPacket(&event);
+				break;
+
+			default:
 				break;
 			}
 
@@ -315,7 +321,21 @@ void peekStop()
 
 void shoot()
 {
-        printf("Implement shoot()\n");
+	if (M->hasMissile()) return;
+
+	M->scoreIs( M->score().value()-1 );
+	UpdateScoreCard(M->myRatId().value());
+
+	M->hasMissileIs(TRUE);
+	M->xMissileIs(M->xloc());
+	M->yMissileIs(M->yloc());
+	M->dirMissileIs(M->dir());
+
+	timeval t;
+	gettimeofday(&t, NULL);
+	M->lastUpdateIs(t);
+
+	updateView = TRUE;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -427,13 +447,46 @@ void ratStates()
 /* This is just for the sample version, rewrite your own */
 void manageMissiles()
 {
-  /* Leave this up to you. */
-  /*
-  //You may find the following lines useful
-  //This subtracts one from the current rat's score and updates the display
-  M->scoreIs( M->score().value()-1 );
-  UpdateScoreCard(M->myRatId().value());
-  */
+	if (!M->hasMissile()) return;
+
+	timeval last, now;
+	gettimeofday(&now, NULL);
+	last = M->lastUpdate();
+	if ((now.tv_sec - last.tv_sec) * 1000
+		+ (now.tv_usec - last.tv_usec) / 1000 < MISSILE_SPEED) return;
+
+	M->lastUpdateIs(now);
+	int oldX = M->xMissile().value();
+	int oldY = M->yMissile().value();
+	int newX = oldX;
+	int newY = oldY;
+	switch (MY_DIR) {
+		case NORTH:
+	  		newX = oldX + 1;
+			break;
+		case SOUTH:
+			newX = oldX - 1;
+			break;
+		case EAST:
+			newY = oldY + 1;
+			break;
+		case WEST:
+			newY = oldY - 1;
+			break;
+		default:
+			MWError("Invalid Direction;");
+	}
+
+	if (!M->maze_[newX][newY]) {
+		M->xMissileIs(Loc(newX));
+		M->yMissileIs(Loc(newY));
+		showMissile(Loc(newX), Loc(newY), M->dirMissile(), Loc(oldX), Loc(oldY), true);
+	} else {
+		M->hasMissileIs(FALSE);
+		clearSquare(Loc(oldX), Loc(oldY));
+	}
+
+	updateView = TRUE;
 }
 
 /* ----------------------------------------------------------------------- */
