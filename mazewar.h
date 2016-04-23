@@ -50,7 +50,7 @@ SOFTWARE.
 #include "Exception.h"
 #include <string>
 #include <time.h>
-#include <packet.h>
+#include "packet.h"
 /* fundamental constants */
 
 #ifndef	TRUE
@@ -76,7 +76,7 @@ SOFTWARE.
 #define	MAZEXMAX	32
 #define	MAZEYMAX	16
 #define	VECTORSIZE	55
-#define	NAMESIZE	20
+#define	NAMESIZE	16
 #define	NDIRECTION	4
 #define	NORTH		0
 #define	SOUTH		1
@@ -362,6 +362,8 @@ void DoViewUpdate(void);
 void sendPacketToPlayer(RatId);
 void processPacket(MWEvent *);
 void netInit(void);
+void sendPacket(PacketHeader *);
+void sendStateUpdate(void);
 
 
 

@@ -17,6 +17,8 @@ MazewarInstance::Ptr M;
 /* Use this socket address to send packets to the multi-cast group. */
 static Sockaddr         groupAddr;
 #define MAX_OTHER_RATS  (MAX_RATS - 1)
+#define PACKET_TYPE	4
+static int seq[PACKET_TYPE];
 
 
 int main(int argc, char *argv[])
@@ -68,26 +70,32 @@ play(void)
 			switch(event.eventType) {
 			case EVENT_A:
 				aboutFace();
+				sendStateUpdate();
 				break;
 
 			case EVENT_S:
 				leftTurn();
+				sendStateUpdate();
 				break;
 
 			case EVENT_D:
 				forward();
+				sendStateUpdate();
 				break;
 
 			case EVENT_F:
 				rightTurn();
+				sendStateUpdate();
 				break;
 
                         case EVENT_G:
 				backward();
+				sendStateUpdate();
 				break;
 
                         case EVENT_C:
 				cloak();
+				sendStateUpdate();
 				break;
 
 			case EVENT_BAR:
@@ -643,5 +651,20 @@ netInit()
 
 }
 
+void
+sendPacket(PacketHeader *packet) {
+	if (sendto((int) M->theSocket(), (void *) packet, sizeof(MW244BPacket), 0,
+		(sockaddr *) &groupAddr, sizeof(Sockaddr)) < 0)
+		MWError("Send packet failed");
 
+	delete packet;
+}
+
+void
+sendStateUpdate() {
+	StateUpdate *su = new StateUpdate(M->myRatId().value(), seq[STATE_UPDATE]++,
+				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, 0, M->score().value());
+	printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
+	sendPacket(su);
+}
 /* ----------------------------------------------------------------------- */

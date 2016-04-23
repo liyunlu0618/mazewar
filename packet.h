@@ -35,13 +35,13 @@ public:
 	uint8_t yPos;
 	uint8_t dir;
 	uint8_t cloaked;
-	uint32_t score;
+	int32_t score;
 
 	StateUpdate() {
 	}
 
 	StateUpdate(uint32_t _rat_id, uint32_t _seq_id, char* _name,
-		    uint8_t _xPos, uint8_t _yPos, uint8_t _dir, uint8_t _cloaked, uint32_t _score)
+		    uint8_t _xPos, uint8_t _yPos, uint8_t _dir, uint8_t _cloaked, int32_t _score)
 		: PacketHeader(_rat_id, _seq_id, STATE_UPDATE, _name), 
 		  xPos(_xPos),
 		  yPos(_yPos),
