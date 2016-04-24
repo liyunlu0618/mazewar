@@ -17,7 +17,6 @@ MazewarInstance::Ptr M;
 /* Use this socket address to send packets to the multi-cast group. */
 static Sockaddr         groupAddr;
 #define MAX_OTHER_RATS  (MAX_RATS - 1)
-#define PACKET_TYPE	4
 static int seq[PACKET_TYPE];
 
 #define HEARTBEAT_SPEED	1000
@@ -548,23 +547,6 @@ void sendPacketToPlayer(RatId ratId)
 
 /* ----------------------------------------------------------------------- */
 
-/* Sample of processPacket. */
-
-void processPacket (MWEvent *eventPacket)
-{
-/*
-	MW244BPacket		*pack = eventPacket->eventDetail;
-	DataStructureX		*packX;
-
-	switch(pack->type) {
-	case PACKET_TYPE_X:
-	  packX = (DataStructureX *) &(pack->body);
-	  break;
-        case ...
-	}
-*/
-
-}
 
 /* ----------------------------------------------------------------------- */
 
@@ -655,20 +637,22 @@ netInit()
 }
 
 void
-sendPacket(PacketHeader *packet) {
+sendPacket(MW244BPacket *packet) {
 	if (sendto((int) M->theSocket(), (void *) packet, sizeof(MW244BPacket), 0,
 		(sockaddr *) &groupAddr, sizeof(Sockaddr)) < 0)
 		MWError("Send packet failed");
-
-	delete packet;
 }
 
 void
 sendStateUpdate() {
 	StateUpdate *su = new StateUpdate(M->myRatId().value(), seq[STATE_UPDATE]++,
 				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, 0, M->score().value());
+	MW244BPacket *outPacket = new MW244BPacket();
+	memcpy(outPacket, su, sizeof (StateUpdate));
 	printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
-	sendPacket(su);
+	sendPacket(outPacket);
+	delete su;
+	delete outPacket;
 }
 
 void
@@ -682,4 +666,87 @@ sendHeartBeat() {
 	M->lastHeartBeatIs(now);
 	sendStateUpdate();
 }
+
+void
+processPacket(MWEvent *eventPacket) {
+	MW244BPacket *packet = eventPacket->eventDetail;
+	PacketHeader *p = (PacketHeader *) packet;
+
+	if (p->rat_id == M->myRatId().value()) {
+		printf("Packet from self, ignored\n");
+		return;
+	}
+
+	switch (p->type) {
+	case STATE_UPDATE:
+		processStateUpdate(p);
+		break;
+
+	case MISSILE_HIT:
+		//processMissileHit(p);
+		break;
+
+	case MISSILE_HIT_ACK:
+		//processMissileHitACK(p);
+		break;
+
+	case LEAVE_GAME:
+		//processLeaveGame(p);
+		break;
+
+	default:
+		MWError("Invalid incoming packet type\n");
+		break;
+	}
+}
+
+void joinGame() {
+       MWEvent         event;
+       MW244BPacket    incoming;
+       timeval         base, now;
+       RatIndexType    ratIndex(0);
+
+       event.eventDetail = &incoming;
+       gettimeofday(&base, NULL);
+
+       while(1) {
+               gettimeofday(&now, NULL);
+               if ((now.tv_sec - base.tv_sec) * 1000 
+                       + (now.tv_usec - base.tv_usec) / 1000 > 3000) {
+                       // Do setup.
+                       for (ratIndex = RatIndexType(0);
+                               ratIndex.value() < MAX_RATS;
+                               ratIndex = RatIndexType(ratIndex.value() + 1)) {
+                               if (!(M->rat(ratIndex)).playing) {
+					Rat r;
+					r.playing = TRUE;
+					r.cloaked = FALSE;
+					r.x = M->xloc();
+					r.y = M->yloc();
+					r.dir = M->dir();
+					r.score = M->score();
+					int i = 0;
+					for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 0;
+					r.lastHeartBeat = now;
+					M->ratIs(r, ratIndex);
+                               }
+                       }
+                       return;
+               }
+               
+               NextEvent(&event, M->theSocket());
+               if (event.eventType == EVENT_NETWORK) {
+			PacketHeader *p = (PacketHeader *) event.eventDetail;
+			if (p->type == STATE_UPDATE) {
+				processPacket(&event);
+			}
+               }
+       }
+}
+
+void
+processStateUpdate(PacketHeader *packet) {
+	
+}
+
 /* ----------------------------------------------------------------------- */

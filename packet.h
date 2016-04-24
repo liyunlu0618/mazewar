@@ -6,43 +6,43 @@
 #define MISSILE_HIT_ACK	2
 #define LEAVE_GAME	3
 
-#define MAXNAMELEN	16
+#define MAXNAMELEN	20
 
 #include <stdio.h>
 #include <string.h>
 
 class PacketHeader {
 public:
-	uint32_t rat_id;
+	uint16_t type;
+	uint16_t rat_id;
 	uint32_t seq_id;
-	uint32_t type;
 	char name[MAXNAMELEN];
 
 	PacketHeader() {
 	}
 
-	PacketHeader(uint32_t _rat_id, uint32_t _seq_id, uint32_t _type, char* _name) {
+	PacketHeader(uint16_t _type, uint16_t _rat_id, uint32_t _seq_id, char* _name) {
+		this->type = _type;
 		this->rat_id = _rat_id;
 		this->seq_id = _seq_id;
-		this->type = _type;
 		strncpy(this->name, _name, MAXNAMELEN);
 	}
 };
 
 class StateUpdate : public PacketHeader {
 public:
-	uint8_t xPos;
-	uint8_t yPos;
-	uint8_t dir;
-	uint8_t cloaked;
+	int16_t xPos;
+	int16_t yPos;
+	int16_t dir;
+	int16_t cloaked;
 	int32_t score;
 
 	StateUpdate() {
 	}
 
-	StateUpdate(uint32_t _rat_id, uint32_t _seq_id, char* _name,
-		    uint8_t _xPos, uint8_t _yPos, uint8_t _dir, uint8_t _cloaked, int32_t _score)
-		: PacketHeader(_rat_id, _seq_id, STATE_UPDATE, _name), 
+	StateUpdate(uint16_t _rat_id, uint32_t _seq_id, char* _name,
+		    int16_t _xPos, int16_t _yPos, int16_t _dir, int16_t _cloaked, int32_t _score)
+		: PacketHeader(STATE_UPDATE, _rat_id, _seq_id, _name), 
 		  xPos(_xPos),
 		  yPos(_yPos),
 		  dir(_dir),
@@ -52,26 +52,28 @@ public:
 
 class MissileHit : public PacketHeader {
 public:
-	uint32_t victimID;
+	uint16_t victimID;
 
 	MissileHit() {
 	}
 
-	MissileHit(uint32_t _rat_id, uint32_t _seq_id, char* _name, uint32_t _victimID)
-		: PacketHeader(_rat_id, _seq_id, MISSILE_HIT, _name),
+	MissileHit(uint16_t _rat_id, uint32_t _seq_id, char* _name, uint16_t _victimID)
+		: PacketHeader(MISSILE_HIT, _rat_id, _seq_id, _name),
 		  victimID(_victimID) {}
 };
 
 class MissileHitACK : public PacketHeader {
 public:
-	uint32_t shooterID;
+	uint16_t shooterID;
+	int32_t score;
 
 	MissileHitACK() {
 	}
 
-	MissileHitACK(uint32_t _rat_id, uint32_t _seq_id, char* _name, uint32_t _shooterID)
-		: PacketHeader(_rat_id, _seq_id, MISSILE_HIT_ACK, _name), 
-		  shooterID(_shooterID) {}
+	MissileHitACK(uint16_t _rat_id, uint32_t _seq_id, char* _name, uint16_t _shooterID, int32_t _score)
+		: PacketHeader(MISSILE_HIT_ACK, _rat_id, _seq_id, _name), 
+		  shooterID(_shooterID),
+		  score(_score) {}
 };
 
 class LeaveGame : public PacketHeader {
@@ -79,8 +81,8 @@ public:
 	LeaveGame() {
 	}
 
-	LeaveGame(uint32_t _rat_id, uint32_t _seq_id, char *_name)
-		: PacketHeader(_rat_id, _seq_id, LEAVE_GAME, _name) {}
+	LeaveGame(uint16_t _rat_id, uint32_t _seq_id, char *_name)
+		: PacketHeader(LEAVE_GAME, _rat_id, _seq_id, _name) {}
 };
 
 #endif

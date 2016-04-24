@@ -89,6 +89,8 @@ SOFTWARE.
 #define	FRONT		3
 #define MISSILE_SPEED	500
 
+#define PACKET_TYPE	4
+
 /* types */
 
 typedef	struct sockaddr_in			Sockaddr;
@@ -136,9 +138,9 @@ public:
 	}
 };
 
-class RatId : public Ordinal<RatId, unsigned short> {
+class RatId : public Ordinal<RatId, unsigned int> {
 public:
-	RatId(unsigned short num) : Ordinal<RatId, unsigned short>(num) {
+	RatId(unsigned int num) : Ordinal<RatId, unsigned int>(num) {
 	}
 };
 
@@ -161,11 +163,14 @@ class RatAppearance{
 class Rat{
 
 public:
-	Rat() :  playing(0), cloaked(0), x(1), y(1), dir(NORTH){};
+	Rat() :  playing(0), cloaked(0), x(1), y(1), dir(NORTH), score(0){};
 	bool playing;
         bool cloaked;
 	Loc	x, y;
 	Direction dir;
+	Score score;
+	int seq[PACKET_TYPE];
+	timeval lastHeartBeat;
 };
 
 typedef	RatAppearance			RatApp_type [MAX_RATS];
@@ -292,7 +297,6 @@ extern MazewarInstance::Ptr M;
 extern unsigned short	ratBits[];
 /* replace this with appropriate definition of your own */
 typedef	struct {
-	unsigned char type;
 	u_long	body[256];
 }					MW244BPacket;
 
@@ -368,6 +372,10 @@ void netInit(void);
 void sendPacket(PacketHeader *);
 void sendStateUpdate(void);
 void sendHeartBeat(void);
+void processStateUpdate(PacketHeader *);
+void processMissileHit(PacketHeader *);
+void processMissileHitACK(PacketHeader *);
+void processLeaveGame(PacketHeader *);
 
 
 
