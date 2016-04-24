@@ -219,6 +219,8 @@ class MazewarInstance :  public Fwk::NamedInterface  {
     void yPeekIs(Loc yPeek) { this->yPeek_ = yPeek; }
     inline int active() const { return active_; }
     void activeIs(int active) { this->active_ = active; }
+    inline int cloaked() const { return this->cloaked_; }
+    void cloakedIs(int cloaked) { this->cloaked_ = cloaked; }
     inline Rat rat(RatIndexType num) const { return mazeRats_[num.value()]; }
     void ratIs(Rat rat, RatIndexType num) { this->mazeRats_[num.value()] = rat; }
     inline bool hasMissile() { return this->hasMissile_; }
@@ -261,6 +263,7 @@ protected:
     Loc xPeek_;
     Loc yPeek_;
     int active_;
+    int16_t cloaked_;
     bool hasMissile_;
     Loc xMissile_;
     Loc yMissile_;

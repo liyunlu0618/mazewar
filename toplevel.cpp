@@ -10,6 +10,7 @@
 #include "main.h"
 #include <string>
 #include "mazewar.h"
+#include <assert.h>
 
 static bool		updateView;	/* true if update needed */
 MazewarInstance::Ptr M;
@@ -42,9 +43,9 @@ int main(int argc, char *argv[])
 
     MazeInit(argc, argv);
 
-    joinGame();
-
     NewPosition(M);
+
+    joinGame();
 
     /* So you can see what a Rat is supposed to look like, we create
     one rat in the single player mode Mazewar.
@@ -626,11 +627,6 @@ netInit()
 	 
 	printf("\n");
 
-	/* set up some stuff strictly for this local sample */
-	M->myRatIdIs(0);
-	M->scoreIs(0);
-	SetMyRatIndexType(0);
-
 	/* Get the multi-cast address ready to use in SendData()
            calls. */
 	memcpy(&groupAddr, &nullAddr, sizeof(Sockaddr));
@@ -648,7 +644,7 @@ sendPacket(MW244BPacket *packet) {
 void
 sendStateUpdate() {
 	StateUpdate *su = new StateUpdate(M->myRatId().value(), seq[STATE_UPDATE]++,
-				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, 0, M->score().value());
+				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, M->cloaked(), M->score().value());
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, su, sizeof (StateUpdate));
 	printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
@@ -674,6 +670,7 @@ processPacket(MWEvent *eventPacket) {
 	MW244BPacket *packet = eventPacket->eventDetail;
 	PacketHeader *p = (PacketHeader *) packet;
 
+	printf("type: %d, rat_id: %d, seq_id: %d, name: %s", p->type, p->rat_id, p->seq_id, p->name);
 	if (p->rat_id == M->myRatId().value()) {
 		printf("Packet from self, ignored\n");
 		return;
@@ -719,24 +716,18 @@ void joinGame() {
                        for (ratIndex = RatIndexType(0);
                                ratIndex.value() < MAX_RATS;
                                ratIndex = RatIndexType(ratIndex.value() + 1)) {
-                               if (!(M->rat(ratIndex)).playing) {
-					Rat r;
-					r.rat_id = random() & (0x00ff);
-					printf("ratid is %d\n", r.rat_id.value());
-					r.playing = TRUE;
-					r.cloaked = FALSE;
-					r.x = M->xloc();
-					r.y = M->yloc();
-					r.dir = M->dir();
-					r.score = M->score();
-					int i = 0;
-					for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 0;
-					r.lastHeartBeat = now;
-					M->ratIs(r, ratIndex);
-					return;
-                               }
+                               if (!(M->rat(ratIndex)).playing) break;
                        }
-			MWError("Game is full\n");
+			if (ratIndex.value() == MAX_RATS)
+				MWError("Game is full\n");
+			RatId rid(random() & (0x00ff));
+			printf("ratid is %d\n", rid.value());
+			M->myRatIdIs(rid);
+			M->cloakedIs(0);
+			int i = 0;
+			for (i = 0; i < PACKET_TYPE; i++) seq[i] = 0;
+			M->lastHeartBeatIs(now);
+			return;
                }
                
                NextEvent(&event, M->theSocket());
@@ -751,7 +742,47 @@ void joinGame() {
 
 void
 processStateUpdate(PacketHeader *packet) {
+	StateUpdate *su = (StateUpdate *)packet;
+	assert(su->rat_id != M->myRatId().value());
+
+	RatIndexType ratIndex(0);
 	
+	for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
+		if (su->rat_id == M->rat(ratIndex).rat_id.value()) break;
+
+	if (ratIndex < MAX_RATS) {
+		Rat r = M->rat(ratIndex);
+		if (su->seq_id < r.seq[STATE_UPDATE]) {
+			printf("Reversed state update packet, drop\n");
+			return;
+		}
+		r.cloaked = (su->cloaked != 0);
+		r.x = Loc(su->xPos);
+		r.y = Loc(su->yPos);
+		r.dir = Direction(su->dir);
+		r.score = Score(su->score);
+		r.seq[STATE_UPDATE] = su->seq_id;
+		M->ratIs(r, ratIndex);
+	} else {
+		for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
+			if (!M->rat(ratIndex).playing) break;
+		if (ratIndex == MAX_RATS) {
+			printf("game full\n");
+			return;
+		}
+		Rat r;
+		r.rat_id = su->rat_id;
+		r.playing = TRUE;
+		r.cloaked = (su->cloaked != 0);
+		r.x = Loc(su->xPos);
+		r.y = Loc(su->yPos);
+		r.dir = Direction(su->dir);
+		r.score = Score(su->score);
+		int i = 0;
+		for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 0;
+		r.seq[STATE_UPDATE] = su->seq_id;
+		M->ratIs(r, ratIndex);
+	}
 }
 
 /* ----------------------------------------------------------------------- */
