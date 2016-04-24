@@ -42,6 +42,8 @@ int main(int argc, char *argv[])
 
     MazeInit(argc, argv);
 
+    joinGame();
+
     NewPosition(M);
 
     /* So you can see what a Rat is supposed to look like, we create
@@ -719,6 +721,8 @@ void joinGame() {
                                ratIndex = RatIndexType(ratIndex.value() + 1)) {
                                if (!(M->rat(ratIndex)).playing) {
 					Rat r;
+					r.rat_id = random() & (0x00ff);
+					printf("ratid is %d\n", r.rat_id.value());
 					r.playing = TRUE;
 					r.cloaked = FALSE;
 					r.x = M->xloc();
@@ -729,9 +733,10 @@ void joinGame() {
 					for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 0;
 					r.lastHeartBeat = now;
 					M->ratIs(r, ratIndex);
+					return;
                                }
                        }
-                       return;
+			MWError("Game is full\n");
                }
                
                NextEvent(&event, M->theSocket());

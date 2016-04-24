@@ -163,7 +163,8 @@ class RatAppearance{
 class Rat{
 
 public:
-	Rat() :  playing(0), cloaked(0), x(1), y(1), dir(NORTH), score(0){};
+	Rat() :  rat_id(0), playing(0), cloaked(0), x(1), y(1), dir(NORTH), score(0){};
+	RatId rat_id;
 	bool playing;
         bool cloaked;
 	Loc	x, y;
@@ -376,6 +377,7 @@ void processStateUpdate(PacketHeader *);
 void processMissileHit(PacketHeader *);
 void processMissileHitACK(PacketHeader *);
 void processLeaveGame(PacketHeader *);
+void joinGame(void);
 
 
 
