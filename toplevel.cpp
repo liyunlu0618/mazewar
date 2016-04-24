@@ -21,6 +21,8 @@ static Sockaddr         groupAddr;
 static int seq[PACKET_TYPE];
 
 #define HEARTBEAT_SPEED	1000
+#define JOIN_GAME_WAIT	5000
+#define FORCE_LEAVE	10000
 
 int main(int argc, char *argv[])
 {
@@ -456,8 +458,20 @@ void ConvertOutgoing(MW244BPacket *p)
 /* This is just for the sample version, rewrite your own */
 void ratStates()
 {
-  /* In our sample version, we don't know about the state of any rats over
-     the net, so this is a no-op */
+	timeval now, last;
+	gettimeofday(&now, NULL);
+	RatIndexType ratIndex(0);
+	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1)) {
+		if (M->rat(ratIndex).playing) {
+			last = M->rat(ratIndex).lastHeartBeat;
+			if ((now.tv_sec - last.tv_sec) * 1000
+			    + (now.tv_usec - last.tv_usec) / 1000 > FORCE_LEAVE) {
+				Rat r = M->rat(ratIndex);
+				r.playing = FALSE;
+				M->ratIs(r, ratIndex);
+			}
+		}
+	}
 }
 
 /* ----------------------------------------------------------------------- */
@@ -763,7 +777,7 @@ void joinGame() {
        while(1) {
                gettimeofday(&now, NULL);
                if ((now.tv_sec - base.tv_sec) * 1000 
-                       + (now.tv_usec - base.tv_usec) / 1000 > 5000) {
+                       + (now.tv_usec - base.tv_usec) / 1000 > JOIN_GAME_WAIT) {
 			RatId rid(random() & (0x00ff));
 			printf("ratid is %d\n", rid.value());
 			M->myRatIdIs(rid);
@@ -852,12 +866,18 @@ processMissileHit(PacketHeader *packet) {
 		M->scoreIs(Score(M->score().value() - minus));
 		UpdateScoreCard(MY_RAT_INDEX);
 		sendMissileHitACK(mh->rat_id, plus);
+		NewPosition(M);
 	}
 }
 
 void
 processMissileHitACK(PacketHeader *packet) {
-
+	MissileHitACK *mha = (MissileHitACK *)packet;
+	if (mha->shooterID == M->myRatId().value()) {
+		printf("shoot someone\n");
+		M->scoreIs(Score(mha->score));
+		UpdateScoreCard(MY_RAT_INDEX);
+	}
 }
 
 void
