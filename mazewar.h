@@ -165,6 +165,7 @@ class Rat{
 public:
 	Rat() :  rat_id(0), playing(0), cloaked(0), x(1), y(1), dir(NORTH), score(0){};
 	RatId rat_id;
+	char name[MAXNAMELEN];
 	bool playing;
         bool cloaked;
 	Loc	x, y;
@@ -375,6 +376,9 @@ void processPacket(MWEvent *);
 void netInit(void);
 void sendPacket(PacketHeader *);
 void sendStateUpdate(void);
+void sendMissileHit(uint16_t);
+void sendMissileHitACK(uint16_t, int);
+void sendLeaveGame(void);
 void sendHeartBeat(void);
 void processStateUpdate(PacketHeader *);
 void processMissileHit(PacketHeader *);
