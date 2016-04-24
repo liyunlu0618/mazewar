@@ -20,6 +20,7 @@ static Sockaddr         groupAddr;
 #define PACKET_TYPE	4
 static int seq[PACKET_TYPE];
 
+#define HEARTBEAT_SPEED	1000
 
 int main(int argc, char *argv[])
 {
@@ -143,6 +144,8 @@ play(void)
 		manageMissiles();
 
 		DoViewUpdate();
+
+		sendHeartBeat();
 
 		/* Any info to send over network? */
 
@@ -666,5 +669,17 @@ sendStateUpdate() {
 				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, 0, M->score().value());
 	printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
 	sendPacket(su);
+}
+
+void
+sendHeartBeat() {
+	timeval last, now;
+	gettimeofday(&now, NULL);
+	last = M->lastHeartBeat();
+	if ((now.tv_sec - last.tv_sec) * 1000
+		+ (now.tv_usec - last.tv_usec) / 1000 < HEARTBEAT_SPEED) return;
+
+	M->lastHeartBeatIs(now);
+	sendStateUpdate();
 }
 /* ----------------------------------------------------------------------- */

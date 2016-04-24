@@ -36,7 +36,7 @@ SED        = sed
 SH         = /bin/sh
 
 INC_DIRS   = -I. -I/usr/openwin/include
-FLAGS      = -g -Wall Wno-write-strings $(INC_DIRS)
+FLAGS      = -g -Wall -Wno-write-strings $(INC_DIRS)
 LIBRARIES  = -lXt -lX11  -lnsl -lICE -lSM
 LIB_DIRS   = -L. -L/usr/X11R6/lib fwk/BaseCollection.o fwk/BaseNotifiee.o fwk/Exception.o
 #Removed -lsocket
