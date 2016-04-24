@@ -21,6 +21,8 @@ static Sockaddr         groupAddr;
 static int seq[PACKET_TYPE];
 
 #define HEARTBEAT_SPEED	1000
+#define CLOAK_TIME	5000
+#define CLOAK_RECOVER_TIME	5000	
 #define JOIN_GAME_WAIT	5000
 #define FORCE_LEAVE	10000
 
@@ -151,6 +153,8 @@ play(void)
 		DoViewUpdate();
 
 		sendHeartBeat();
+
+		checkCloaked();
 
 		/* Any info to send over network? */
 
@@ -337,7 +341,7 @@ void peekStop()
 
 void shoot()
 {
-	if (M->hasMissile()) return;
+	if (M->hasMissile() || M->cloaked()) return;
 
 	M->scoreIs( M->score().value()-1 );
 	UpdateScoreCard(MY_RAT_INDEX);
@@ -358,7 +362,20 @@ void shoot()
 
 void cloak()
 {
-        printf("Implement cloak()\n");
+	if (M->cloaked()) return;
+	timeval last, now;
+	last = M->lastCloaked();
+	gettimeofday(&now, NULL);
+
+	if ((now.tv_sec - last.tv_sec) * 1000
+	    + (now.tv_usec - last.tv_usec) / 1000 < CLOAK_RECOVER_TIME)
+		return;
+
+	Rat r = M->rat(MY_RAT_INDEX);
+	M->cloakedIs(1);
+	r.cloaked = TRUE;
+	M->ratIs(r, MY_RAT_INDEX);
+	M->lastCloakedIs(now);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -702,11 +719,28 @@ sendHeartBeat() {
 	timeval last, now;
 	gettimeofday(&now, NULL);
 	last = M->lastHeartBeat();
+
 	if ((now.tv_sec - last.tv_sec) * 1000
 		+ (now.tv_usec - last.tv_usec) / 1000 < HEARTBEAT_SPEED) return;
 
 	M->lastHeartBeatIs(now);
 	sendStateUpdate();
+}
+
+void
+checkCloaked() {
+	timeval last, now;
+	gettimeofday(&now, NULL);
+	last = M->lastCloaked();
+
+	if ((now.tv_sec - last.tv_sec) * 1000
+		+ (now.tv_usec - last.tv_usec) / 1000 < CLOAK_TIME) return;
+	
+	M->cloakedIs(0);
+	M->lastCloakedIs(now);
+	Rat r = M->rat(MY_RAT_INDEX);
+	r.cloaked = FALSE;
+	M->ratIs(r, MY_RAT_INDEX);
 }
 
 void

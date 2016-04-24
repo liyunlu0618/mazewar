@@ -236,6 +236,8 @@ class MazewarInstance :  public Fwk::NamedInterface  {
     void lastUpdateIs(timeval lastUpdate) { this->lastUpdate_ = lastUpdate; }
     inline timeval lastHeartBeat() { return this->lastHeartBeat_; }
     void lastHeartBeatIs(timeval lastHeartBeat) { this->lastHeartBeat_ = lastHeartBeat; }
+    inline timeval lastCloaked() { return this->lastCloaked_; }
+    void lastCloakedIs(timeval lastCloaked) { this->lastCloaked_ = lastCloaked; }
 
     MazeType maze_;
     RatName myName_;
@@ -271,6 +273,7 @@ protected:
     Direction dirMissile_;
     timeval lastUpdate_;
     timeval lastHeartBeat_;
+    timeval lastCloaked_;
 };
 extern MazewarInstance::Ptr M;
 
@@ -385,6 +388,7 @@ void processMissileHit(PacketHeader *);
 void processMissileHitACK(PacketHeader *);
 void processLeaveGame(PacketHeader *);
 void joinGame(void);
+void checkCloaked(void);
 
 
 
