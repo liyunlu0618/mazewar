@@ -62,7 +62,16 @@ int main(int argc, char *argv[])
     if (argc > 1) {
 	M->xlocIs(Loc(atoi(argv[2])));
 	M->ylocIs(Loc(atoi(argv[3])));
-	M->dirIs(Direction(atoi(argv[4])));
+
+	if (strcmp(argv[4], "n") == 0)
+		M->dirIs(Direction(NORTH));
+	if (strcmp(argv[4], "s") == 0)
+		M->dirIs(Direction(SOUTH));
+	if (strcmp(argv[4], "e") == 0)
+		M->dirIs(Direction(EAST));
+	if (strcmp(argv[4], "w") == 0)
+		M->dirIs(Direction(WEST));
+
 	if (M->maze_[MY_X_LOC][MY_Y_LOC]) NewPosition(M);
     }
 
