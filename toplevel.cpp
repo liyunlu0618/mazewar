@@ -24,7 +24,7 @@ static int seq[PACKET_TYPE];
 #define CLOAK_TIME	5000
 #define CLOAK_RECOVER_TIME	5000	
 #define JOIN_GAME_WAIT	5000
-#define FORCE_LEAVE	5000
+#define FORCE_LEAVE	10000
 
 int main(int argc, char *argv[])
 {
