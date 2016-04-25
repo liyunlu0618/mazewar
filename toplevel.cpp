@@ -24,7 +24,7 @@ static int seq[PACKET_TYPE];
 #define CLOAK_TIME	5000
 #define CLOAK_RECOVER_TIME	5000	
 #define JOIN_GAME_WAIT	5000
-#define FORCE_LEAVE	10000
+#define FORCE_LEAVE	5000
 
 int main(int argc, char *argv[])
 {
@@ -155,6 +155,8 @@ play(void)
 		sendHeartBeat();
 
 		checkCloaked();
+
+		NewScoreCard();
 
 		/* Any info to send over network? */
 
@@ -481,6 +483,7 @@ void ratStates()
 	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1)) {
 		if (M->rat(ratIndex).playing) {
 			last = M->rat(ratIndex).lastHeartBeat;
+			printf("%ld s, %ld us\n", (long int)last.tv_sec, (long int)last.tv_usec);
 			if ((now.tv_sec - last.tv_sec) * 1000
 			    + (now.tv_usec - last.tv_usec) / 1000 > FORCE_LEAVE) {
 				Rat r = M->rat(ratIndex);
@@ -724,7 +727,7 @@ sendMissileHit(uint16_t victim_id) {
 	mh->victimID = htons(mh->victimID);
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, mh, sizeof (MissileHit));
-	printf("send missile hit\n");
+	//printf("send missile hit\n");
 	sendPacket(outPacket);
 	delete mh;
 	delete outPacket;
@@ -773,7 +776,7 @@ sendMissileHitACK(uint16_t id, int score) {
 	mha->score = htonl(mha->score);
 
 	memcpy(outPacket, mha, sizeof (MissileHitACK));
-	printf("send ack name %s, score: %d\n", mha->name, mha->score);
+	//printf("send ack name %s, score: %d\n", mha->name, mha->score);
 	sendPacket(outPacket);
 	delete mha;
 	delete outPacket;
@@ -788,7 +791,7 @@ sendLeaveGame() {
 
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, lg, sizeof (LeaveGame));
-	//printf("send leave game, id: %d, name: %s\n", lg->rat_id, lg->name);
+	printf("send leave game, id: %d, name: %s\n", lg->rat_id, lg->name);
 	sendPacket(outPacket);
 	delete lg;
 	delete outPacket;
@@ -803,7 +806,7 @@ processPacket(MWEvent *eventPacket) {
 	p->rat_id = ntohs(p->rat_id);
 	p->seq_id = ntohl(p->seq_id);
 
-	printf("type: %d, rat_id: %d, seq_id: %d, name: %s\n", p->type, p->rat_id, p->seq_id, p->name);
+	//printf("type: %d, rat_id: %d, seq_id: %d, name: %s\n", p->type, p->rat_id, p->seq_id, p->name);
 	if (p->rat_id == M->myRatId().value()) {
 		//printf("Packet from self, ignored\n");
 		return;
@@ -943,7 +946,7 @@ processMissileHit(PacketHeader *packet) {
 	int minus = M->cloaked() ? 7 : 5;
 	int plus = M->cloaked() ? 13 : 11;
 	if (mh->victimID == M->myRatId().value()) {
-		printf("I'm victim, %s hit me\n", mh->name);
+		//printf("I'm victim, %s hit me\n", mh->name);
 		M->scoreIs(Score(M->score().value() - minus));
 		UpdateScoreCard(MY_RAT_INDEX);
 		sendMissileHitACK(mh->rat_id, plus);
@@ -957,11 +960,11 @@ processMissileHitACK(PacketHeader *packet) {
 
 	mha->shooterID = ntohs(mha->shooterID);
 	mha->score = ntohl(mha->score);
-	printf("shooterid: %d\n, myid: %d\n", mha->shooterID, M->myRatId().value());
+	//printf("shooterid: %d\n, myid: %d\n", mha->shooterID, M->myRatId().value());
 
 	if (mha->shooterID == M->myRatId().value()) {
 		M->scoreIs(Score(M->score().value() + mha->score));
-		printf("shot someone, score %d\n", M->score());
+		//printf("shot someone, score %d\n", M->score());
 		UpdateScoreCard(MY_RAT_INDEX);
 	}
 }
@@ -969,8 +972,9 @@ processMissileHitACK(PacketHeader *packet) {
 void
 processLeaveGame(PacketHeader *packet) {
 	LeaveGame *lg = (LeaveGame *)packet;
-	RatIndexType ratIndex(0);
-
+	RatIndexType ratIndex(1);
+	
+	printf("Received leave game\n");
 	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
 		if (lg->rat_id == M->rat(ratIndex).rat_id.value()) break;
 
@@ -992,14 +996,12 @@ printRats() {
 		if (!M->rat(ratIndex).playing) continue;
 
 		Rat r = M->rat(ratIndex);
-/*
 		printf("index: %d\n", ratIndex.value());
 		printf("id: %d\n", r.rat_id);
 		printf("x: %d\n", r.x.value());
 		printf("y: %d\n", r.y.value());
 		printf("score: %d\n", r.score.value());
 		printf("cloaked: %d\n", r.cloaked ? 1 : 0);
-*/
 	}
 }
 
