@@ -205,10 +205,10 @@ forward(void)
 	register int	ty = MY_Y_LOC;
 
 	switch(MY_DIR) {
-	case NORTH:	if (!M->maze_[tx+1][ty])	tx++; break;
-	case SOUTH:	if (!M->maze_[tx-1][ty])	tx--; break;
-	case EAST:	if (!M->maze_[tx][ty+1])	ty++; break;
-	case WEST:	if (!M->maze_[tx][ty-1])	ty--; break;
+	case NORTH:	if (!M->maze_[tx+1][ty] && !hasOtherRat(tx + 1, ty))	tx++; break;
+	case SOUTH:	if (!M->maze_[tx-1][ty] && !hasOtherRat(tx - 1, ty))	tx--; break;
+	case EAST:	if (!M->maze_[tx][ty+1] && !hasOtherRat(tx, ty + 1))	ty++; break;
+	case WEST:	if (!M->maze_[tx][ty-1] && !hasOtherRat(tx, ty - 1))	ty--; break;
 	default:
 		MWError("bad direction in Forward");
 	}
@@ -227,10 +227,10 @@ void backward()
 	register int	ty = MY_Y_LOC;
 
 	switch(MY_DIR) {
-	case NORTH:	if (!M->maze_[tx-1][ty])	tx--; break;
-	case SOUTH:	if (!M->maze_[tx+1][ty])	tx++; break;
-	case EAST:	if (!M->maze_[tx][ty-1])	ty--; break;
-	case WEST:	if (!M->maze_[tx][ty+1])	ty++; break;
+	case NORTH:	if (!M->maze_[tx-1][ty] && !hasOtherRat(tx - 1, ty))	tx--; break;
+	case SOUTH:	if (!M->maze_[tx+1][ty] && !hasOtherRat(tx + 1, ty))	tx++; break;
+	case EAST:	if (!M->maze_[tx][ty-1] && !hasOtherRat(tx, ty - 1))	ty--; break;
+	case WEST:	if (!M->maze_[tx][ty+1] && !hasOtherRat(tx, ty + 1))	ty++; break;
 	default:
 		MWError("bad direction in Backward");
 	}
@@ -402,7 +402,7 @@ void NewPosition(MazewarInstance::Ptr m)
 	Loc newY(0);
 	Direction dir(0); /* start on occupied square */
 
-	while (M->maze_[newX.value()][newY.value()]) {
+	while (M->maze_[newX.value()][newY.value()] || hasOtherRat(newX.value(), newY.value())) {
 	  /* MAZE[XY]MAX is a power of 2 */
 	  newX = Loc(random() & (MAZEXMAX - 1));
 	  newY = Loc(random() & (MAZEYMAX - 1));
@@ -1003,6 +1003,19 @@ printRats() {
 		printf("score: %d\n", r.score.value());
 		printf("cloaked: %d\n", r.cloaked ? 1 : 0);
 	}
+}
+
+bool
+hasOtherRat(int tx, int ty) {
+	RatIndexType ratIndex(0);
+
+	for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1)) {
+		if (M->rat(ratIndex).playing &&
+			M->rat(ratIndex).x.value() == tx && M->rat(ratIndex).y.value() == ty) {
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 /* ----------------------------------------------------------------------- */
