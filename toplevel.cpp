@@ -37,8 +37,18 @@ int main(int argc, char *argv[])
     signal(SIGINT, quit);
     signal(SIGTERM, quit);
 
-    getName("Welcome to CS244B MazeWar!\n\nYour Name", &ratName);
-    ratName[strlen(ratName)-1] = 0;
+    if (argc != 1 && argc != 5)
+	MWError("Invalid input arguments\n");
+
+    if (argc > 1) {
+        ratName = (char*) malloc(MAXNAMELEN);
+        if (ratName == NULL)
+            MWError("no mem for ratName");
+        strncpy(ratName, argv[1], MAXNAMELEN);
+    } else {
+        getName("Welcome to CS244B MazeWar!\n\nYour Name", &ratName);
+        ratName[strlen(ratName) - 1] = 0;
+    }
 
     M = MazewarInstance::mazewarInstanceNew(string(ratName));
     MazewarInstance* a = M.ptr();
@@ -48,6 +58,13 @@ int main(int argc, char *argv[])
     MazeInit(argc, argv);
 
     NewPosition(M);
+
+    if (argc > 1) {
+	M->xlocIs(Loc(atoi(argv[2])));
+	M->ylocIs(Loc(atoi(argv[3])));
+	M->dirIs(Direction(atoi(argv[4])));
+	if (M->maze_[MY_X_LOC][MY_Y_LOC]) NewPosition(M);
+    }
 
     joinGame();
 
