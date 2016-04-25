@@ -694,6 +694,16 @@ void
 sendStateUpdate() {
 	StateUpdate *su = new StateUpdate(M->myRatId().value(), seq[STATE_UPDATE]++,
 				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, M->cloaked(), M->score().value());
+
+	su->type = htons(su->type);
+	su->rat_id = htons(su->rat_id);
+	su->seq_id = htons(su->seq_id);
+	su->xPos = htons(su->xPos);
+	su->yPos = htons(su->yPos);
+	su->dir = htons(su->dir);
+	su->cloaked = htons(su->cloaked);
+	su->score = htonl(su->score);
+	
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, su, sizeof (StateUpdate));
 	//printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
@@ -707,6 +717,11 @@ void
 sendMissileHit(uint16_t victim_id) {
 	MissileHit *mh = new MissileHit(M->myRatId().value(), seq[MISSILE_HIT]++,
 				M->myName_, victim_id);
+
+	mh->type = htons(mh->type);
+	mh->rat_id = htons(mh->rat_id);
+	mh->seq_id = htons(mh->seq_id);
+	mh->victimID = htons(mh->victimID);
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, mh, sizeof (StateUpdate));
 	//printf("send missile hit, victim id: %d\n", mh->victimID);
@@ -750,6 +765,13 @@ void
 sendMissileHitACK(uint16_t id, int score) {
 	MissileHitACK *mha = new MissileHitACK(M->myRatId().value(), seq[MISSILE_HIT_ACK]++, M->myName_, id, score);
 	MW244BPacket *outPacket = new MW244BPacket();
+
+	mha->type = htons(mha->type);
+	mha->rat_id = htons(mha->rat_id);
+	mha->seq_id = htons(mha->seq_id);
+	mha->shooterID = htons(mha->shooterID);
+	mha->score = htonl(mha->score);
+
 	memcpy(outPacket, mha, sizeof (LeaveGame));
 	//printf("send ack id: %d, score: %d\n", mha->shooterID, mha->score);
 	sendPacket(outPacket);
@@ -760,6 +782,10 @@ sendMissileHitACK(uint16_t id, int score) {
 void
 sendLeaveGame() {
 	LeaveGame *lg = new LeaveGame(M->myRatId().value(), seq[LEAVE_GAME]++, M->myName_);
+	lg->type = htons(lg->type);
+	lg->rat_id = htons(lg->rat_id);
+	lg->seq_id = htons(lg->seq_id);
+
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, lg, sizeof (LeaveGame));
 	//printf("send leave game, id: %d, name: %s\n", lg->rat_id, lg->name);
@@ -772,6 +798,10 @@ void
 processPacket(MWEvent *eventPacket) {
 	MW244BPacket *packet = eventPacket->eventDetail;
 	PacketHeader *p = (PacketHeader *) packet;
+
+	p->type = ntohs(p->type);
+	p->rat_id = ntohs(p->rat_id);
+	p->seq_id = ntohl(p->seq_id);
 
 	//printf("type: %d, rat_id: %d, seq_id: %d, name: %s\n", p->type, p->rat_id, p->seq_id, p->name);
 	if (p->rat_id == M->myRatId().value()) {
@@ -850,6 +880,12 @@ processStateUpdate(PacketHeader *packet) {
 	StateUpdate *su = (StateUpdate *)packet;
 	assert(su->rat_id != M->myRatId().value());
 
+	su->xPos = ntohs(su->xPos);
+	su->yPos = ntohs(su->yPos);
+	su->dir = ntohs(su->dir);
+	su->cloaked = ntohs(su->cloaked);
+	su->score = ntohl(su->score);
+
 	timeval now;
 	gettimeofday(&now, NULL);
 	RatIndexType ratIndex(1);
@@ -902,6 +938,8 @@ void
 processMissileHit(PacketHeader *packet) {
 	MissileHit *mh = (MissileHit *)packet;
 
+	mh->victimID = ntohs(mh->victimID);
+
 	int minus = M->cloaked() ? 7 : 5;
 	int plus = M->cloaked() ? 13 : 11;
 	if (mh->victimID == M->myRatId().value()) {
@@ -916,6 +954,10 @@ processMissileHit(PacketHeader *packet) {
 void
 processMissileHitACK(PacketHeader *packet) {
 	MissileHitACK *mha = (MissileHitACK *)packet;
+
+	mha->shooterID = ntohs(mha->shooterID);
+	mha->score = ntohl(mha->score);
+
 	if (mha->shooterID == M->myRatId().value()) {
 		//printf("shoot someone\n");
 		M->scoreIs(Score(mha->score));
