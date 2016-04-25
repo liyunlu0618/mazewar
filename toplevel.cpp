@@ -477,7 +477,7 @@ void ratStates()
 {
 	timeval now, last;
 	gettimeofday(&now, NULL);
-	RatIndexType ratIndex(0);
+	RatIndexType ratIndex(1);
 	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1)) {
 		if (M->rat(ratIndex).playing) {
 			last = M->rat(ratIndex).lastHeartBeat;
@@ -531,7 +531,7 @@ void manageMissiles()
 		if (M->rat(ratIndex).playing &&
 		    M->rat(ratIndex).x == newX &&
 		    M->rat(ratIndex).y == newY) {
-			printf("hit a rat!\n");
+			//printf("hit a rat!\n");
 			sendMissileHit(M->rat(ratIndex).rat_id.value());
 			M->hasMissileIs(FALSE);
 			clearSquare(Loc(oldX), Loc(oldY));
@@ -696,10 +696,11 @@ sendStateUpdate() {
 				M->myName_, MY_X_LOC, MY_Y_LOC, MY_DIR, M->cloaked(), M->score().value());
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, su, sizeof (StateUpdate));
-	printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
+	//printf("send state update, id: %d, name: %s, x: %d, y: %d, score: %d\n", su->rat_id, su->name, su->xPos, su->yPos, su->score);
 	sendPacket(outPacket);
 	delete su;
 	delete outPacket;
+	printRats();
 }
 
 void
@@ -708,7 +709,7 @@ sendMissileHit(uint16_t victim_id) {
 				M->myName_, victim_id);
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, mh, sizeof (StateUpdate));
-	printf("send missile hit, victim id: %d\n", mh->victimID);
+	//printf("send missile hit, victim id: %d\n", mh->victimID);
 	sendPacket(outPacket);
 	delete mh;
 	delete outPacket;
@@ -729,6 +730,8 @@ sendHeartBeat() {
 
 void
 checkCloaked() {
+	if (!M->cloaked()) return;
+
 	timeval last, now;
 	gettimeofday(&now, NULL);
 	last = M->lastCloaked();
@@ -748,7 +751,7 @@ sendMissileHitACK(uint16_t id, int score) {
 	MissileHitACK *mha = new MissileHitACK(M->myRatId().value(), seq[MISSILE_HIT_ACK]++, M->myName_, id, score);
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, mha, sizeof (LeaveGame));
-	printf("send ack id: %d, score: %d\n", mha->shooterID, mha->score);
+	//printf("send ack id: %d, score: %d\n", mha->shooterID, mha->score);
 	sendPacket(outPacket);
 	delete mha;
 	delete outPacket;
@@ -759,7 +762,7 @@ sendLeaveGame() {
 	LeaveGame *lg = new LeaveGame(M->myRatId().value(), seq[LEAVE_GAME]++, M->myName_);
 	MW244BPacket *outPacket = new MW244BPacket();
 	memcpy(outPacket, lg, sizeof (LeaveGame));
-	printf("send leave game, id: %d, name: %s\n", lg->rat_id, lg->name);
+	//printf("send leave game, id: %d, name: %s\n", lg->rat_id, lg->name);
 	sendPacket(outPacket);
 	delete lg;
 	delete outPacket;
@@ -770,9 +773,9 @@ processPacket(MWEvent *eventPacket) {
 	MW244BPacket *packet = eventPacket->eventDetail;
 	PacketHeader *p = (PacketHeader *) packet;
 
-	printf("type: %d, rat_id: %d, seq_id: %d, name: %s", p->type, p->rat_id, p->seq_id, p->name);
+	//printf("type: %d, rat_id: %d, seq_id: %d, name: %s\n", p->type, p->rat_id, p->seq_id, p->name);
 	if (p->rat_id == M->myRatId().value()) {
-		printf("Packet from self, ignored\n");
+		//printf("Packet from self, ignored\n");
 		return;
 	}
 
@@ -812,8 +815,8 @@ void joinGame() {
                gettimeofday(&now, NULL);
                if ((now.tv_sec - base.tv_sec) * 1000 
                        + (now.tv_usec - base.tv_usec) / 1000 > JOIN_GAME_WAIT) {
-			RatId rid(random() & (0x00ff));
-			printf("ratid is %d\n", rid.value());
+			RatId rid(random() & (0xffff));
+			//printf("ratid is %d\n", rid.value());
 			M->myRatIdIs(rid);
 			M->cloakedIs(0);
 			int i = 0;
@@ -828,7 +831,7 @@ void joinGame() {
 			r.dir = M->dir();
 			r.score = M->score();
 			strncpy(r.name, M->myName_, MAXNAMELEN);
-			M->ratIs(r, RatIndexType(0));
+			M->ratIs(r, MY_RAT_INDEX);
 			return;
                }
                
@@ -847,15 +850,18 @@ processStateUpdate(PacketHeader *packet) {
 	StateUpdate *su = (StateUpdate *)packet;
 	assert(su->rat_id != M->myRatId().value());
 
+	timeval now;
+	gettimeofday(&now, NULL);
 	RatIndexType ratIndex(1);
 	
 	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
-		if (su->rat_id == M->rat(ratIndex).rat_id.value()) break;
+		if (M->rat(ratIndex).playing &&
+			su->rat_id == M->rat(ratIndex).rat_id.value()) break;
 
 	if (ratIndex < MAX_RATS) {
 		Rat r = M->rat(ratIndex);
 		if (su->seq_id <= r.seq[STATE_UPDATE]) {
-			printf("Reversed state update packet, drop\n");
+			//printf("Reversed state update packet, drop\n");
 			return;
 		}
 		r.cloaked = (su->cloaked != 0);
@@ -865,24 +871,27 @@ processStateUpdate(PacketHeader *packet) {
 		r.score = Score(su->score);
 		r.seq[STATE_UPDATE] = su->seq_id;
 		strncpy(r.name, su->name, MAXNAMELEN);
+		r.lastHeartBeat = now;
 		M->ratIs(r, ratIndex);
 	} else {
-		for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
+		for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
 			if (!M->rat(ratIndex).playing) break;
 		if (ratIndex == MAX_RATS) {
-			printf("game full\n");
+			//printf("game full\n");
 			return;
 		}
 		Rat r;
 		r.rat_id = su->rat_id;
+		strncpy(r.name, su->name, MAXNAMELEN);
 		r.playing = TRUE;
 		r.cloaked = (su->cloaked != 0);
 		r.x = Loc(su->xPos);
 		r.y = Loc(su->yPos);
 		r.dir = Direction(su->dir);
 		r.score = Score(su->score);
+		r.lastHeartBeat = now;
 		int i = 0;
-		for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 0;
+		for (i = 0; i < PACKET_TYPE; i++) r.seq[i] = 1;
 		r.seq[STATE_UPDATE] = su->seq_id;
 		M->ratIs(r, ratIndex);
 	}
@@ -896,7 +905,7 @@ processMissileHit(PacketHeader *packet) {
 	int minus = M->cloaked() ? 7 : 5;
 	int plus = M->cloaked() ? 13 : 11;
 	if (mh->victimID == M->myRatId().value()) {
-		printf("I'm victim\n");
+		//printf("I'm victim\n");
 		M->scoreIs(Score(M->score().value() - minus));
 		UpdateScoreCard(MY_RAT_INDEX);
 		sendMissileHitACK(mh->rat_id, plus);
@@ -908,7 +917,7 @@ void
 processMissileHitACK(PacketHeader *packet) {
 	MissileHitACK *mha = (MissileHitACK *)packet;
 	if (mha->shooterID == M->myRatId().value()) {
-		printf("shoot someone\n");
+		//printf("shoot someone\n");
 		M->scoreIs(Score(mha->score));
 		UpdateScoreCard(MY_RAT_INDEX);
 	}
@@ -919,17 +928,34 @@ processLeaveGame(PacketHeader *packet) {
 	LeaveGame *lg = (LeaveGame *)packet;
 	RatIndexType ratIndex(0);
 
-	for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
+	for (ratIndex = RatIndexType(1); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1))
 		if (lg->rat_id == M->rat(ratIndex).rat_id.value()) break;
 
 	if (ratIndex.value() == MAX_RATS) {
-		printf("unknown rat, ignore\n");
+		//printf("unknown rat, ignore\n");
 		return;
 	}
 
 	Rat r = M->rat(ratIndex);
 	r.playing = FALSE;
 	M->ratIs(r, ratIndex);
+}
+
+void
+printRats() {
+	RatIndexType ratIndex(0);
+
+	for (ratIndex = RatIndexType(0); ratIndex.value() < MAX_RATS; ratIndex = RatIndexType(ratIndex.value() + 1)) {
+		if (!M->rat(ratIndex).playing) continue;
+
+		Rat r = M->rat(ratIndex);
+		printf("index: %d\n", ratIndex.value());
+		printf("id: %d\n", r.rat_id);
+		printf("x: %d\n", r.x.value());
+		printf("y: %d\n", r.y.value());
+		printf("score: %d\n", r.score.value());
+		printf("cloaked: %d\n", r.cloaked ? 1 : 0);
+	}
 }
 
 /* ----------------------------------------------------------------------- */

@@ -389,6 +389,7 @@ void processMissileHitACK(PacketHeader *);
 void processLeaveGame(PacketHeader *);
 void joinGame(void);
 void checkCloaked(void);
+void printRats(void);
 
 
 
